@@ -1,52 +1,26 @@
-# Stage 1: build wkhtmltopdf with debug symbols
-FROM wkhtmltopdf/0.12:bionic-amd64 AS builder
-
-RUN apt-get update -qq && apt-get install -y -q git 2>/dev/null
-
-RUN git clone --depth=1 --branch 0.12.6 \
-    https://github.com/wkhtmltopdf/wkhtmltopdf.git /src
-
-WORKDIR /build
-RUN /tgt/qt/bin/qmake \
-    QMAKE_CFLAGS="-g -O1" \
-    QMAKE_CXXFLAGS="-g -O1" \
-    QMAKE_LFLAGS="" \
-    CONFIG+="debug" \
-    CONFIG-="release" \
-    CONFIG+=silent \
-    /src/wkhtmltopdf.pro && \
-    make -j$(nproc)
-
-# Stage 2: runtime lab environment
-FROM ubuntu:bionic AS lab
+FROM ubuntu:bionic
 
 RUN apt-get update -qq && apt-get install -y -q \
-    gdb \
-    libssl1.1 \
-    libxext6 \
-    libxrender1 \
-    libfontconfig1 \
-    libfreetype6 \
-    libx11-6 \
-    libglib2.0-0 \
-    libpng16-16 \
-    libjpeg8 \
-    zlib1g \
+    gdb curl \
+    libssl1.1 libxext6 libxrender1 libfontconfig1 libfreetype6 \
+    libx11-6 libglib2.0-0 libpng16-16 libjpeg8 zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the debug binary
-COPY --from=builder /build/bin/wkhtmltopdf /lab/bin/wkhtmltopdf
+# Download pre-built debug binary and compat libs from GitHub Release
+# wkhtmltopdf 0.12.6 compiled with -g -O1 inside wkhtmltopdf/0.12:bionic-amd64
+RUN mkdir -p /lab/bin /lab/libs /lab/output && \
+    curl -fsSL https://github.com/TableBsse/wkhtmltopdf-stackoverflow-lab/releases/download/v0.12.6-debug/wkhtmltopdf \
+         -o /lab/bin/wkhtmltopdf && \
+    curl -fsSL https://github.com/TableBsse/wkhtmltopdf-stackoverflow-lab/releases/download/v0.12.6-debug/libssl.so.1.1 \
+         -o /lab/libs/libssl.so.1.1 && \
+    curl -fsSL https://github.com/TableBsse/wkhtmltopdf-stackoverflow-lab/releases/download/v0.12.6-debug/libcrypto.so.1.1 \
+         -o /lab/libs/libcrypto.so.1.1 && \
+    chmod +x /lab/bin/wkhtmltopdf
 
-# Copy Qt shared libs (the binary was linked against the patched Qt)
-COPY --from=builder /tgt/qt/lib /lab/qt/lib
-
-# Copy payloads
-COPY payloads/ /lab/payloads/
-
-# gdb config: don't paginate, catch signals
 RUN echo "set pagination off" > /root/.gdbinit && \
     echo "catch signal SIGSEGV" >> /root/.gdbinit && \
     echo "catch signal SIGABRT" >> /root/.gdbinit
 
-ENV LD_LIBRARY_PATH=/lab/qt/lib
+ENV LD_LIBRARY_PATH=/lab/libs
+COPY payloads/ /lab/payloads/
 WORKDIR /lab

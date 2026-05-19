@@ -14,8 +14,7 @@ wkhtmltopdf's `--xsl-style-sheet` flag passes an attacker-controlled XSLT to Qt'
 ## Requirements
 
 - Docker (tested with 24.x)
-- ~5-10 minutes for the first build (compiles wkhtmltopdf with `-g -O1`)
-- No other dependencies
+- No other dependencies — the pre-built debug binary is downloaded automatically during `make build`
 
 ## Quick Start
 
