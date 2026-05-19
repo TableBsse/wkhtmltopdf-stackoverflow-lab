@@ -1,4 +1,3 @@
 output/
 *.pdf
-*.o
 .gdb_history
