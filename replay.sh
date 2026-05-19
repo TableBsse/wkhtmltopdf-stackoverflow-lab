@@ -9,6 +9,7 @@ HTML=$LAB/payloads/trigger.html
 OUT=$LAB/output/out.pdf
 
 export LD_LIBRARY_PATH=$LAB/libs:$LD_LIBRARY_PATH
+unset DISPLAY  # force headless mode — patched Qt doesn't need X11
 mkdir -p "$LAB/output"
 
 if [ "$1" = "--gdb" ]; then
